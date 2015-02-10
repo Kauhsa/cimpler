@@ -12,7 +12,14 @@ exports.init = function(config, cimpler) {
       }
 
       try {
-         var build = extractBuildInfo(req.body);
+         var build;
+
+         if (req.headers['x-github-event'] == 'pull_request') {
+            build = extractBuildInfoFromPullRequest(req.body);
+         } else {
+            build = extractBuildInfo(req.body);
+         }
+
          if (build) {
             cimpler.addBuild(build);
          }
@@ -44,3 +51,17 @@ function extractBuildInfo(requestBody) {
    };
 }
 
+function extractBuildInfoFromPullRequest(requestBody) {
+   var info = JSON.parse(requestBody.payload);
+   
+   if (info.action !== 'opened' && info.action !== 'synchronize') {
+      return null;
+   }
+   
+   return {
+     repo   : info.repository.url,
+     commit : info.pull_request.head.sha,
+     branch : 'pr/' + info.pull_request.number,
+     status : 'pending'
+   }	
+}
